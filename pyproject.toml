@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "litellm-agent-mcp"
+name = "litellm-mcp"
 version = "1.0.0"
 description = "MCP server giving AI agents access to 100+ LLMs through LiteLLM"
 readme = "README.md"
@@ -32,4 +32,7 @@ Homepage = "https://github.com/BerriAI/litellm"
 Repository = "https://github.com/shin-bot-litellm/litellm-agent-mcp"
 
 [project.scripts]
-litellm-agent-mcp = "server:main"
+litellm-agent-mcp = "litellm_agent_mcp:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["litellm_agent_mcp"]
