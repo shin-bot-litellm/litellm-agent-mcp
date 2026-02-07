@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "litellm-mcp"
-version = "1.0.3"
+version = "1.0.4"
 description = "MCP server giving AI agents access to 100+ LLMs through LiteLLM"
 readme = "README.md"
 license = "MIT"
@@ -36,3 +36,13 @@ litellm-agent-mcp = "litellm_agent_mcp:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["litellm_agent_mcp"]
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    ".mcpregistry_*",
+    ".env",
+    ".venv/",
+    "mcp-publisher",
+    "*.pem",
+    "*.key",
+]

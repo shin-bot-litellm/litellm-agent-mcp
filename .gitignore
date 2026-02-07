@@ -1,5 +1,24 @@
--e .venv/
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Build artifacts
 dist/
+build/
 *.egg-info/
--e .mcpregistry_*
+
+# Secrets - NEVER COMMIT
+.mcpregistry_*
+.env
+*.pem
+*.key
+
+# MCP tools
 mcp-publisher
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
