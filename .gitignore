@@ -1,0 +1,3 @@
+-e .venv/
+dist/
+*.egg-info/
