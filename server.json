@@ -1,17 +1,18 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.shin-bot-litellm/litellm-mcp",
-  "description": "Give AI agents access to 100+ LLMs. Call any model, compare outputs.",
+  "name": "io.github.BerriAI/litellm-mcp",
+  "title": "LiteLLM Multi-Model API",
+  "description": "Give AI agents access to 100+ LLMs. Call GPT-4, Claude, Gemini, Mistral, and more through one unified API.",
   "repository": {
-    "url": "https://github.com/shin-bot-litellm/litellm-agent-mcp",
+    "url": "https://github.com/BerriAI/litellm-agent-mcp",
     "source": "github"
   },
-  "version": "1.0.1",
+  "version": "1.0.2",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "litellm-mcp",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "transport": {
         "type": "stdio"
       },
@@ -26,6 +27,18 @@
         {
           "name": "ANTHROPIC_API_KEY",
           "description": "Anthropic API key for Claude models",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "LITELLM_API_BASE",
+          "description": "LiteLLM Proxy base URL (optional)",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "LITELLM_API_KEY",
+          "description": "LiteLLM Proxy API key (optional)",
           "isRequired": false,
           "isSecret": true
         }
