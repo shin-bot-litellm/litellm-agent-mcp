@@ -6,7 +6,10 @@ A simple MCP server that gives AI agents access to 100+ LLMs through LiteLLM.
 Designed for agents who want to call different models for different tasks.
 
 Tools:
-- call: Call any LLM model
+- call: Call any LLM model (OpenAI chat completions format)
+- responses: Use OpenAI Responses API format
+- messages: Use Anthropic Messages API format
+- generate_content: Use Google generateContent format
 - compare: Compare outputs from multiple models
 - models: List available models
 - recommend: Get model recommendation for a task type
@@ -76,7 +79,7 @@ async def list_tools() -> list[Tool]:
     return [
         Tool(
             name="call",
-            description="Call any LLM model through LiteLLM. Use this to get a response from a specific model.",
+            description="Call any LLM model through LiteLLM using OpenAI chat completions format. This is the standard way to get a response from a model.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -102,6 +105,118 @@ async def list_tools() -> list[Tool]:
                     }
                 },
                 "required": ["model", "prompt"]
+            }
+        ),
+        Tool(
+            name="responses",
+            description="Use OpenAI Responses API format. Supports stateful conversations, built-in tools, and structured outputs. Best for complex multi-turn interactions.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "model": {
+                        "type": "string",
+                        "description": "Model ID (e.g., 'gpt-4o', 'claude-sonnet-4-20250514')"
+                    },
+                    "input": {
+                        "type": "string",
+                        "description": "The input text/prompt"
+                    },
+                    "instructions": {
+                        "type": "string",
+                        "description": "System instructions for the model"
+                    },
+                    "temperature": {
+                        "type": "number",
+                        "description": "Temperature (0-2, default 1.0)"
+                    },
+                    "max_output_tokens": {
+                        "type": "integer",
+                        "description": "Maximum tokens in response"
+                    },
+                    "previous_response_id": {
+                        "type": "string",
+                        "description": "ID of previous response for multi-turn conversations"
+                    }
+                },
+                "required": ["model", "input"]
+            }
+        ),
+        Tool(
+            name="messages",
+            description="Use Anthropic Messages API format. Native format for Claude models with support for system prompts, multi-turn conversations, and tool use.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "model": {
+                        "type": "string",
+                        "description": "Model ID (e.g., 'claude-sonnet-4-20250514', 'gpt-4o')"
+                    },
+                    "messages": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "role": {"type": "string", "enum": ["user", "assistant"]},
+                                "content": {"type": "string"}
+                            }
+                        },
+                        "description": "Array of message objects with role and content"
+                    },
+                    "system": {
+                        "type": "string",
+                        "description": "System prompt"
+                    },
+                    "max_tokens": {
+                        "type": "integer",
+                        "description": "Maximum tokens in response (required for Claude)"
+                    },
+                    "temperature": {
+                        "type": "number",
+                        "description": "Temperature (0-1, default 1.0)"
+                    }
+                },
+                "required": ["model", "messages", "max_tokens"]
+            }
+        ),
+        Tool(
+            name="generate_content",
+            description="Use Google generateContent API format. Native format for Gemini models with support for multimodal inputs and safety settings.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "model": {
+                        "type": "string",
+                        "description": "Model ID (e.g., 'gemini/gemini-1.5-pro', 'gpt-4o')"
+                    },
+                    "contents": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "role": {"type": "string", "enum": ["user", "model"]},
+                                "parts": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "text": {"type": "string"}
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Array of content objects with role and parts"
+                    },
+                    "system_instruction": {
+                        "type": "string",
+                        "description": "System instruction for the model"
+                    },
+                    "generation_config": {
+                        "type": "object",
+                        "description": "Generation config (temperature, maxOutputTokens, etc.)"
+                    }
+                },
+                "required": ["model", "contents"]
             }
         ),
         Tool(
@@ -163,6 +278,12 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     
     if name == "call":
         return await handle_call(arguments)
+    elif name == "responses":
+        return await handle_responses(arguments)
+    elif name == "messages":
+        return await handle_messages(arguments)
+    elif name == "generate_content":
+        return await handle_generate_content(arguments)
     elif name == "compare":
         return await handle_compare(arguments)
     elif name == "models":
@@ -174,7 +295,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
 
 async def handle_call(args: dict) -> list[TextContent]:
-    """Call a single LLM model."""
+    """Call a single LLM model using chat completions format."""
     try:
         import litellm
         
@@ -206,6 +327,176 @@ async def handle_call(args: dict) -> list[TextContent]:
         return [TextContent(type="text", text="Error: litellm not installed. Run: pip install litellm")]
     except Exception as e:
         return [TextContent(type="text", text=f"Error calling {args.get('model', 'unknown')}: {str(e)}")]
+
+
+async def handle_responses(args: dict) -> list[TextContent]:
+    """Use OpenAI Responses API format."""
+    try:
+        import litellm
+        
+        model = args["model"]
+        input_text = args["input"]
+        instructions = args.get("instructions")
+        temperature = args.get("temperature", 1.0)
+        max_output_tokens = args.get("max_output_tokens")
+        previous_response_id = args.get("previous_response_id")
+        
+        kwargs = {
+            "model": model,
+            "input": input_text,
+        }
+        if instructions:
+            kwargs["instructions"] = instructions
+        if temperature is not None:
+            kwargs["temperature"] = temperature
+        if max_output_tokens:
+            kwargs["max_output_tokens"] = max_output_tokens
+        if previous_response_id:
+            kwargs["previous_response_id"] = previous_response_id
+            
+        response = await litellm.aresponses(**kwargs)
+        
+        # Extract text from response
+        output_text = ""
+        if hasattr(response, 'output') and response.output:
+            for item in response.output:
+                if hasattr(item, 'content') and item.content:
+                    for content in item.content:
+                        if hasattr(content, 'text'):
+                            output_text += content.text
+        
+        result = {
+            "id": getattr(response, 'id', None),
+            "output": output_text,
+            "usage": {
+                "input_tokens": getattr(response.usage, 'input_tokens', None) if hasattr(response, 'usage') else None,
+                "output_tokens": getattr(response.usage, 'output_tokens', None) if hasattr(response, 'usage') else None,
+            }
+        }
+        
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+        
+    except ImportError:
+        return [TextContent(type="text", text="Error: litellm not installed. Run: pip install litellm")]
+    except AttributeError as e:
+        # Fallback if responses API not available
+        return [TextContent(type="text", text=f"Responses API may not be available for this model. Try using 'call' instead. Error: {str(e)}")]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error with responses API: {str(e)}")]
+
+
+async def handle_messages(args: dict) -> list[TextContent]:
+    """Use Anthropic Messages API format."""
+    try:
+        import litellm
+        
+        model = args["model"]
+        messages = args["messages"]
+        system = args.get("system")
+        max_tokens = args["max_tokens"]
+        temperature = args.get("temperature", 1.0)
+        
+        kwargs = {
+            "model": model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+        }
+        if system:
+            kwargs["system"] = system
+            
+        # Use completion but format response like Messages API
+        response = await litellm.acompletion(**kwargs)
+        
+        result = {
+            "id": getattr(response, 'id', None),
+            "type": "message",
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "text",
+                    "text": response.choices[0].message.content
+                }
+            ],
+            "model": model,
+            "stop_reason": response.choices[0].finish_reason,
+            "usage": {
+                "input_tokens": response.usage.prompt_tokens if response.usage else None,
+                "output_tokens": response.usage.completion_tokens if response.usage else None,
+            }
+        }
+        
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+        
+    except ImportError:
+        return [TextContent(type="text", text="Error: litellm not installed. Run: pip install litellm")]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error with messages API: {str(e)}")]
+
+
+async def handle_generate_content(args: dict) -> list[TextContent]:
+    """Use Google generateContent API format."""
+    try:
+        import litellm
+        
+        model = args["model"]
+        contents = args["contents"]
+        system_instruction = args.get("system_instruction")
+        generation_config = args.get("generation_config", {})
+        
+        # Convert Gemini format to OpenAI format for LiteLLM
+        messages = []
+        if system_instruction:
+            messages.append({"role": "system", "content": system_instruction})
+        
+        for content in contents:
+            role = "assistant" if content.get("role") == "model" else "user"
+            text_parts = []
+            for part in content.get("parts", []):
+                if "text" in part:
+                    text_parts.append(part["text"])
+            if text_parts:
+                messages.append({"role": role, "content": " ".join(text_parts)})
+        
+        kwargs = {
+            "model": model,
+            "messages": messages,
+        }
+        if "temperature" in generation_config:
+            kwargs["temperature"] = generation_config["temperature"]
+        if "maxOutputTokens" in generation_config:
+            kwargs["max_tokens"] = generation_config["maxOutputTokens"]
+        if "topP" in generation_config:
+            kwargs["top_p"] = generation_config["topP"]
+            
+        response = await litellm.acompletion(**kwargs)
+        
+        # Format response like Gemini API
+        result = {
+            "candidates": [
+                {
+                    "content": {
+                        "parts": [
+                            {"text": response.choices[0].message.content}
+                        ],
+                        "role": "model"
+                    },
+                    "finishReason": response.choices[0].finish_reason.upper() if response.choices[0].finish_reason else "STOP",
+                }
+            ],
+            "usageMetadata": {
+                "promptTokenCount": response.usage.prompt_tokens if response.usage else None,
+                "candidatesTokenCount": response.usage.completion_tokens if response.usage else None,
+                "totalTokenCount": response.usage.total_tokens if response.usage else None,
+            }
+        }
+        
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+        
+    except ImportError:
+        return [TextContent(type="text", text="Error: litellm not installed. Run: pip install litellm")]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error with generateContent API: {str(e)}")]
 
 
 async def handle_compare(args: dict) -> list[TextContent]:

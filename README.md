@@ -19,7 +19,10 @@ AI agents are typically stuck on a single model. With this MCP server, your agen
 
 | Tool | Description |
 |------|-------------|
-| `call` | Call any LLM model with a prompt |
+| `call` | Call any LLM model (OpenAI chat completions format) |
+| `responses` | Use OpenAI Responses API format (stateful, tools, structured output) |
+| `messages` | Use Anthropic Messages API format (native Claude format) |
+| `generate_content` | Use Google generateContent format (native Gemini format) |
 | `compare` | Compare responses from multiple models |
 | `models` | List available models and their strengths |
 | `recommend` | Get model recommendation for a task type |
